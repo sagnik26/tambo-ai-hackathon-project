@@ -9,18 +9,32 @@
  */
 
 import { BudgetCard, budgetCardSchema } from "@/components/finance/budget-card";
-import { SummaryCard, summaryCardSchema } from "@/components/finance/summary-card";
-import { TransactionCard, transactionCardSchema } from "@/components/finance/transaction-card";
+import {
+  SummaryCard,
+  summaryCardSchema,
+} from "@/components/finance/summary-card";
+import {
+  TransactionCard,
+  transactionCardSchema,
+} from "@/components/finance/transaction-card";
 import { Graph, graphSchema } from "@/components/tambo/graph";
 import { DataCard, dataCardSchema } from "@/components/ui/card-data";
-import { addTransaction, getBudgetStatus, getSpendingByCategory, getSpendingTrend, getSummary, getTransactions, setBudget } from "@/services/finance-data";
+import {
+  addTransaction,
+  getBudgetStatus,
+  getSpendingByCategory,
+  getSpendingTrend,
+  getSummary,
+  getTransactions,
+  setBudget,
+  type Category,
+} from "@/services/finance-data";
 import {
   getCountryPopulations,
   getGlobalPopulationTrend,
 } from "@/services/population-stats";
 import type { TamboComponent } from "@tambo-ai/react";
 import { TamboTool } from "@tambo-ai/react";
-import { Amiko } from "next/font/google";
 import { z } from "zod";
 
 /**
@@ -36,44 +50,39 @@ export const tools: TamboTool[] = [
     name: "addTransaction",
     description: "A tool to add a new transaction to the finance data",
     tool: addTransaction,
-    toolSchema: z
-    .function()
-    .args(
-      z.object({
-        type: z.enum(["income", "expense"]).describe("Transaction type"),
-        amount: z.number().describe("Transaction amount"),
-        category: z
+    inputSchema: z.object({
+      type: z.enum(["income", "expense"]).describe("Transaction type"),
+      amount: z.number().describe("Transaction amount"),
+      category: z
         .enum([
-          "Food & Dining", 
-          "Shopping", 
-          "Transportation", 
-          "Bills & Utilities", 
-          "Entertainment", 
-          "Healthcare", 
-          "Travel", 
-          "Education", 
-          "Salary", 
-          "Freelance", 
-          "Investment", 
-          "Other"])
-          .describe("Transaction category"),
-        description: z.string().describe("Transaction description"),
-        date: z.string().describe("Transaction date (ISO format)"),
-        tags: z.array(z.string()).optional().describe("Optional tags"),
+          "Food & Dining",
+          "Shopping",
+          "Transportation",
+          "Bills & Utilities",
+          "Entertainment",
+          "Healthcare",
+          "Travel",
+          "Education",
+          "Salary",
+          "Freelance",
+          "Investment",
+          "Other",
+        ])
+        .describe("Transaction category"),
+      description: z.string().describe("Transaction description"),
+      date: z.string().describe("Transaction date (ISO format)"),
+      tags: z.array(z.string()).optional().describe("Optional tags"),
+    }),
+    outputSchema: z.array(
+      z.object({
+        id: z.string(),
+        type: z.enum(["income", "expense"]),
+        amount: z.number(),
+        category: z.string(),
+        description: z.string(),
+        date: z.string(),
+        tags: z.array(z.string()).optional(),
       }),
-    )
-    .returns(
-      z.array(
-        z.object({
-          id: z.string(),
-          type: z.enum(["income", "expense"]),
-          amount: z.number(),
-          category: z.string(),
-          description: z.string(),
-          date: z.string(),
-          tags: z.array(z.string()).optional(),
-        })
-      )
     ),
   },
   {
@@ -81,149 +90,109 @@ export const tools: TamboTool[] = [
     description:
       "Get a list of transactions with optional filtering by type, category, date range, or limit. Use this to show transaction history.",
     tool: getTransactions,
-    toolSchema: z
-      .function()
-      .args(
-        z
-          .object({
-            type: z.enum(["income", "expense"]).optional(),
-            category: z.string().optional(),
-            startDate: z.string().optional(),
-            endDate: z.string().optional(),
-            limit: z.number().optional(),
-          })
-          .optional()
-      )
-      .returns(
-        z.array(
-          z.object({
-            id: z.string(),
-            type: z.enum(["income", "expense"]),
-            amount: z.number(),
-            category: z.string(),
-            description: z.string(),
-            date: z.string(),
-            tags: z.array(z.string()).optional(),
-          })
-        )
-      ),
+    inputSchema: z.object({
+      type: z.enum(["income", "expense"]).optional(),
+      category: z.string().optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+      limit: z.number().optional(),
+    }),
+    outputSchema: z.array(
+      z.object({
+        id: z.string(),
+        type: z.enum(["income", "expense"]),
+        amount: z.number(),
+        category: z.string(),
+        description: z.string(),
+        date: z.string(),
+        tags: z.array(z.string()).optional(),
+      }),
+    ),
   },
   {
     name: "getSpendingByCategory",
     description:
       "Get spending breakdown by category. Returns totals and percentages for each category. Useful for showing where money is being spent.",
     tool: getSpendingByCategory,
-    toolSchema: z
-      .function()
-      .args(
-        z
-          .object({
-            startDate: z.string().optional(),
-            endDate: z.string().optional(),
-            type: z.enum(["income", "expense"]).optional(),
-          })
-          .optional()
-      )
-      .returns(
-        z.array(
-          z.object({
-            category: z.string(),
-            total: z.number(),
-            percentage: z.number(),
-            transactionCount: z.number(),
-          })
-        )
-      ),
+    inputSchema: z.object({
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+      type: z.enum(["income", "expense"]).optional(),
+    }),
+    outputSchema: z.array(
+      z.object({
+        category: z.string(),
+        total: z.number(),
+        percentage: z.number(),
+        transactionCount: z.number(),
+      }),
+    ),
   },
   {
     name: "getSpendingTrend",
     description:
       "Get spending trends over time. Returns income, expenses, and net balance grouped by day, week, or month. Useful for showing financial trends.",
     tool: getSpendingTrend,
-    toolSchema: z
-      .function()
-      .args(
-        z
-          .object({
-            startDate: z.string().optional(),
-            endDate: z.string().optional(),
-            groupBy: z.enum(["day", "week", "month"]).optional(),
-          })
-          .optional()
-      )
-      .returns(
-        z.array(
-          z.object({
-            date: z.string(),
-            income: z.number(),
-            expenses: z.number(),
-            net: z.number(),
-          })
-        )
-      ),
+    inputSchema: z.object({
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+      groupBy: z.enum(["day", "week", "month"]).optional(),
+    }),
+    outputSchema: z.array(
+      z.object({
+        date: z.string(),
+        income: z.number(),
+        expenses: z.number(),
+        net: z.number(),
+      }),
+    ),
   },
   {
     name: "getBudgetStatus",
     description:
       "Get current budget status for all categories. Shows budget limits and how much has been spent in each category.",
     tool: getBudgetStatus,
-    toolSchema: z
-      .function()
-      .args()
-      .returns(
-        z.array(
-          z.object({
-            category: z.string(),
-            limit: z.number(),
-            spent: z.number(),
-          })
-        )
-      ),
+    inputSchema: z.object({}),
+    outputSchema: z.array(
+      z.object({
+        category: z.string(),
+        limit: z.number(),
+        spent: z.number(),
+      }),
+    ),
   },
   {
     name: "setBudget",
     description:
       "Set or update a budget limit for a specific category. Use this when the user wants to set spending limits.",
-    tool: setBudget,
-    toolSchema: z
-      .function()
-      .args(
-        z.object({
-          category: z.string().describe("Budget category"),
-          limit: z.number().describe("Budget limit amount"),
-        })
-      )
-      .returns(
-        z.object({
-          category: z.string(),
-          limit: z.number(),
-          spent: z.number(),
-        })
-      ),
+    tool: async (params: { category: string; limit: number }) => {
+      return setBudget(params.category as Category, params.limit);
+    },
+    inputSchema: z.object({
+      category: z.string().describe("Budget category"),
+      limit: z.number().describe("Budget limit amount"),
+    }),
+    outputSchema: z.object({
+      category: z.string(),
+      limit: z.number(),
+      spent: z.number(),
+    }),
   },
   {
     name: "getSummary",
     description:
       "Get financial summary including total income, total expenses, balance, and transaction count. Use this to show overall financial status.",
     tool: getSummary,
-    toolSchema: z
-      .function()
-      .args(
-        z
-          .object({
-            startDate: z.string().optional(),
-            endDate: z.string().optional(),
-          })
-          .optional()
-      )
-      .returns(
-        z.object({
-          totalIncome: z.number(),
-          totalExpenses: z.number(),
-          balance: z.number(),
-          transactionCount: z.number(),
-        })
-      ),
+    inputSchema: z.object({
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+    }),
+    outputSchema: z.object({
+      totalIncome: z.number(),
+      totalExpenses: z.number(),
+      balance: z.number(),
+      transactionCount: z.number(),
+    }),
   },
   {
     name: "countryPopulation",
@@ -282,7 +251,7 @@ export const tools: TamboTool[] = [
  * can be controlled by AI to dynamically render UI elements based on user interactions.
  */
 export const components: TamboComponent[] = [
-    // Finance components
+  // Finance components
   {
     name: "TransactionCard",
     description:
